@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,11 +30,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavOptionsBuilder
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navOptions
 import coil.compose.AsyncImage
 import com.example.spaceflightsapp.model.FlightResult
 import com.example.spaceflightsapp.ui.theme.SpaceFlightsAppTheme
@@ -40,19 +50,43 @@ import com.example.spaceflightsapp.viewmodel.FlightState
 import com.example.spaceflightsapp.viewmodel.FlightViewModel
 
 class MainActivity : ComponentActivity() {
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SpaceFlightsAppTheme {
+                val navController = rememberNavController()
+
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     topBar = {TopAppBar(title={Text("Space flights Articles", fontWeight = FontWeight(800))})}
                 ) { innerPadding ->
-                    FlightScreen(
-                        viewModel = viewModel(),
-                        modifier = Modifier.padding(innerPadding)
-                    )
+
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = "FlightScreen"
+                    ){
+                        composable("FlightScreen"){
+                            FlightScreen(
+                                viewModel = viewModel(),
+                                modifier = Modifier.padding(innerPadding),
+                                navController = navController
+                            )
+                        }
+                        composable("FlightDetailsScreen/{flightId}"){ backStackEntry ->
+
+                            val flightId = backStackEntry.arguments?.getString("flightId")
+
+
+                            FlightDetailsScreen(
+                                viewModel = viewModel(),
+                                navController = navController,
+                                flightId = flightId
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -63,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun FlightScreen(viewModel: FlightViewModel, modifier: Modifier = Modifier){
+fun FlightScreen(viewModel: FlightViewModel, modifier: Modifier = Modifier, navController: NavController){
     //create repo and viewmodel object
 
     val state by viewModel.flightState.observeAsState(FlightState.Loading)
@@ -80,8 +114,8 @@ fun FlightScreen(viewModel: FlightViewModel, modifier: Modifier = Modifier){
                 LazyColumn(contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp))
                 {
-                    items((state as FlightState.Success).flights){ flights ->
-                        FlightItems(flights)
+                    items((state as FlightState.Success).flights){ flight ->
+                        FlightItems(flight, navController)
                     }
                 }
             }
@@ -90,11 +124,11 @@ fun FlightScreen(viewModel: FlightViewModel, modifier: Modifier = Modifier){
 }
 
 @Composable
-fun FlightItems(flight: FlightResult) {
+fun FlightItems(flight: FlightResult, navController: NavController) {
     Card(
         modifier = Modifier.fillMaxWidth()
             .clickable{
-                println(flight.id)
+                navController.navigate(route= "FlightDetailsScreen/${flight.id}")
             },
     ){
         Row(
@@ -128,7 +162,41 @@ fun FlightItems(flight: FlightResult) {
 
 
 @Composable
-fun FlightDetails(flight: FlightResult){
+fun FlightDetailsScreen(viewModel:FlightViewModel,
+                        flightId: String?, navController: NavController){
+    val state by viewModel.flightState.observeAsState(FlightState.Loading)
 
+    Box(modifier = Modifier
+        .fillMaxSize().padding(top = 100.dp),
+        contentAlignment = Alignment.Center) {
+        when(state){
+            is FlightState.Error ->{}
+            FlightState.Loading -> CircularProgressIndicator()
+            is FlightState.Success -> {
+                LazyColumn(contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp))
+                {
+                    items((state as FlightState.Success).flights){ flight ->
+                        if(flight.id.toString() == flightId){
+                            Text("Article #${flight.id}")
+                            Text(flight.title)
+                            AsyncImage(
+                                model = flight.image_url,
+                                contentDescription = flight.summary,
+                                modifier = Modifier.size(250.dp)
+                            )
+                            Text(flight.summary)
+                            Text(flight.published_at)
+                            Text(flight.authors.toString())
+                            Button(onClick = {navController.navigate("FlightScreen")}) {
+                                Text("Go back")
+                            }
 
+                        }
+                    }
+                }
+
+            }
+        }
+    }
 }
