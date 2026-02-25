@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.Format
 import androidx.navigation.NavController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
@@ -48,6 +49,8 @@ import com.example.spaceflightsapp.model.FlightResult
 import com.example.spaceflightsapp.ui.theme.SpaceFlightsAppTheme
 import com.example.spaceflightsapp.viewmodel.FlightState
 import com.example.spaceflightsapp.viewmodel.FlightViewModel
+import okhttp3.internal.format
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
 
@@ -101,6 +104,7 @@ fun FlightScreen(viewModel: FlightViewModel, modifier: Modifier = Modifier, navC
     //create repo and viewmodel object
 
     val state by viewModel.flightState.observeAsState(FlightState.Loading)
+    println(state .toString())
 
     Box(
         modifier = Modifier
@@ -178,16 +182,58 @@ fun FlightDetailsScreen(viewModel:FlightViewModel,
                 {
                     items((state as FlightState.Success).flights){ flight ->
                         if(flight.id.toString() == flightId){
-                            Text("Article #${flight.id}")
-                            Text(flight.title)
-                            AsyncImage(
-                                model = flight.image_url,
-                                contentDescription = flight.summary,
-                                modifier = Modifier.size(250.dp)
+                            Text(
+                                text="Article #${flight.id}",
+                                fontWeight = FontWeight(800),
+                                fontSize = 36.sp,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            Text(flight.summary)
-                            Text(flight.published_at)
-                            Text(flight.authors.toString())
+
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                AsyncImage(
+                                    model = flight.image_url,
+                                    contentDescription = flight.summary,
+                                    modifier = Modifier.size(300.dp).fillMaxWidth()
+                                )
+                            }
+                            Text(
+                                text=flight.title,
+                                fontWeight = FontWeight(800),
+                                fontSize = 24.sp,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Text(
+                                text=flight.summary,
+                                fontSize = 24.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+
+                            Text(
+                                "Published on: ${flight.published_at.substring(0,10)}"
+                            )
+
+                            Row() {
+                                var finalText = "Author"
+
+                                for(author in flight.authors) {
+                                    if(flight.authors.size > 1){
+                                        finalText += "s: "
+                                        if(
+                                            !finalText.contains(author.name)
+                                        ){
+                                            finalText += ", ${author.name},"
+                                        }
+                                    }else{
+                                        finalText += ": ${author.name}"
+                                    }
+
+                                }
+                                Text(finalText)
+
+                            }
+
+
                             Button(onClick = {navController.navigate("FlightScreen")}) {
                                 Text("Go back")
                             }
